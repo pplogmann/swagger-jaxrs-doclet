@@ -25,15 +25,17 @@ public class RootDocLoader {
 
         final JavadocTool javaDoc = JavadocTool.make0(context);
         return javaDoc.getRootDocImpl(
-                "",
-                null,
-                new ModifierFilter(ModifierFilter.ALL_ACCESS),
-                new ListBuffer<String>().toList(),
-                new ListBuffer<String[]>().toList(),
-                false,
-                subPackages.toList(),
-                new ListBuffer<String>().toList(),
-                false, false, false
+                "", //doclocale
+                null, //encoding
+                new ModifierFilter(ModifierFilter.ALL_ACCESS), //filter
+                new ListBuffer<String>().toList(), //javaNames
+                new ListBuffer<String[]>().toList(), //options
+                false, //breakiterator
+                subPackages.toList(), //subPackages
+                new ListBuffer<String>().toList(), //excludedPackages
+                false, //docClasses
+                false, //legacyDoclet
+                false //quiet
         );
     }
 

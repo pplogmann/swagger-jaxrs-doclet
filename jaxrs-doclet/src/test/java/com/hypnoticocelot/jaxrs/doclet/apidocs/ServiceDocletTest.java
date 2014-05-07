@@ -33,7 +33,7 @@ public class ServiceDocletTest {
 
     @Test
     public void testStart() throws IOException {
-        final RootDoc rootDoc = RootDocLoader.fromPath("src/test/resources", "fixtures.sample");
+        final RootDoc rootDoc = RootDocLoader.fromPath("jaxrs-doclet/src/test/resources", "fixtures.sample");
 
         boolean parsingResult = new JaxRsAnnotationParser(options, rootDoc).run();
         assertThat("JavaDoc generation failed", parsingResult, equalTo(true));

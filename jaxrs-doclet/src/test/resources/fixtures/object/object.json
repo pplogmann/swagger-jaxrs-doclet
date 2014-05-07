@@ -12,6 +12,11 @@
                     "httpMethod": "GET",
                     "nickname": "get",
                     "responseClass": "object"
+                },
+                {
+                    "httpMethod": "GET",
+                    "nickname": "getAll",
+                    "responseClass": "List[Object]"
                 }
             ]
         }
