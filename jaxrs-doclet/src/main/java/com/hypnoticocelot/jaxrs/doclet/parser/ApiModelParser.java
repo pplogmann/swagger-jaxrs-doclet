@@ -1,180 +1,123 @@
 package com.hypnoticocelot.jaxrs.doclet.parser;
 
-import com.google.common.base.Predicate;
-import static com.google.common.collect.Collections2.filter;
+import com.google.common.base.Function;
 import com.hypnoticocelot.jaxrs.doclet.DocletOptions;
+import com.hypnoticocelot.jaxrs.doclet.model.Api;
+import com.hypnoticocelot.jaxrs.doclet.model.Method;
 import com.hypnoticocelot.jaxrs.doclet.model.Model;
-import com.hypnoticocelot.jaxrs.doclet.model.Property;
-import com.hypnoticocelot.jaxrs.doclet.translator.Translator;
-import com.sun.javadoc.*;
+import com.hypnoticocelot.jaxrs.doclet.model.Operation;
+import com.sun.javadoc.ClassDoc;
+import com.sun.javadoc.MethodDoc;
+import com.sun.javadoc.Type;
 
 import java.util.*;
 
+import static com.google.common.base.Objects.firstNonNull;
+import static com.google.common.collect.Collections2.transform;
+import static com.hypnoticocelot.jaxrs.doclet.parser.AnnotationHelper.parsePath;
 
-public class ApiModelParser {
+public class ApiClassParser {
 
 	private final DocletOptions options;
-	private final Translator translator;
-	private final Type rootType;
+	private final ClassDoc classDoc;
+	private final String rootPath;
 	private final Set<Model> models;
+	private final Collection<ClassDoc> classes;
+	private final Method parentMethod;
 
-	public ApiModelParser(DocletOptions options, Translator translator, Type rootType) {
+	public ApiClassParser(DocletOptions options, ClassDoc classDoc, Collection<ClassDoc> classes) {
 		this.options = options;
-		this.translator = translator;
-		this.rootType = rootType;
+		this.classDoc = classDoc;
+		this.rootPath = firstNonNull(parsePath(classDoc.annotations()), "");
 		this.models = new LinkedHashSet<Model>();
+		this.classes = classes;
+		this.parentMethod = null;
 	}
 
-	public Set<Model> parse() {
-		parseModel(rootType);
+	/**
+	 * Creates sub-resource class parser.
+	 *
+	 * @param parentMethod method that creates the sub-resource.
+	 */
+	public ApiClassParser(DocletOptions options, ClassDoc classDoc, Collection<ClassDoc> classes, Method parentMethod) {
+		this.options = options;
+		this.classDoc = classDoc;
+		this.rootPath = firstNonNull(parsePath(classDoc.annotations()), "");
+		this.models = new LinkedHashSet<Model>();
+		this.classes = classes;
+		this.parentMethod = parentMethod;
+	}
+
+	public String getRootPath() {
+		return rootPath;
+	}
+
+	public Collection<Api> parse() {
+		List<Api> apis = new ArrayList<Api>();
+		Map<String, Collection<Method>> apiMethods = new HashMap<String, Collection<Method>>();
+
+		for (MethodDoc method : classDoc.methods()) {
+			ApiMethodParser methodParser = parentMethod == null
+					? new ApiMethodParser(options, rootPath, method)
+					: new ApiMethodParser(options, parentMethod, method);
+			Method parsedMethod = methodParser.parse();
+			if (parsedMethod == null) {
+				continue;
+			}
+			if (parsedMethod.isSubResource()) {
+				ClassDoc subResourceClassDoc = lookUpClassDoc(method.returnType());
+				if (subResourceClassDoc != null) {
+					// delete class from the dictionary to handle recursive sub-resources
+					Collection<ClassDoc> shrunkClasses = new ArrayList<ClassDoc>(classes);
+					shrunkClasses.remove(classDoc);
+					// recursively parse the sub-resource class
+					ApiClassParser subResourceParser = new ApiClassParser(options, subResourceClassDoc, shrunkClasses, parsedMethod);
+					apis.addAll(subResourceParser.parse());
+					models.addAll(subResourceParser.models());
+				}
+				continue;
+			}
+			models.addAll(methodParser.models());
+
+			String realPath = parsedMethod.getPath();
+			Collection<Method> matchingMethods = apiMethods.get(realPath);
+			if (matchingMethods == null) {
+				matchingMethods = new ArrayList<Method>();
+				apiMethods.put(realPath, matchingMethods);
+			}
+			matchingMethods.add(parsedMethod);
+		}
+
+		for (Map.Entry<String, Collection<Method>> apiEntries : apiMethods.entrySet()) {
+			Collection<Operation> operations = new ArrayList<Operation>(
+					transform(apiEntries.getValue(), new Function<Method, Operation>() {
+						@Override
+						public Operation apply(Method method) {
+							return new Operation(method);
+						}
+					})
+			);
+			apis.add(new Api(apiEntries.getKey(), "", operations));
+		}
+		Collections.sort(apis, new Comparator<Api>() {
+			@Override
+			public int compare(Api o1, Api o2) {
+				return o1.getPath().compareTo(o2.getPath());
+			}
+		});
+		return apis;
+	}
+
+	private ClassDoc lookUpClassDoc(Type type) {
+		for (ClassDoc subResourceClassDoc : classes) {
+			if (subResourceClassDoc.qualifiedTypeName().equals(type.qualifiedTypeName())) {
+				return subResourceClassDoc;
+			}
+		}
+		return null;
+	}
+
+	public Collection<Model> models() {
 		return models;
 	}
-
-	private void parseModel(Type type) {
-		boolean isPrimitive = /* type.isPrimitive()? || */ AnnotationHelper.isPrimitive(type);
-		boolean isJavaxType = type.qualifiedTypeName().startsWith("javax.");
-		boolean isBaseObject = type.qualifiedTypeName().equals("java.lang.Object");
-		boolean isTypeToTreatAsOpaque = options.getTypesToTreatAsOpaque().contains(type.qualifiedTypeName());
-		ClassDoc classDoc = type.asClassDoc();
-		if (isPrimitive || isJavaxType || isBaseObject || isTypeToTreatAsOpaque || classDoc == null || alreadyStoredType(type)) {
-			return;
-		}
-		Map<String, Type> types = findReferencedTypes(classDoc);
-		Map<String, Property> elements = getProperties(classDoc);
-
-		if (!elements.isEmpty()) {
-			models.add(new Model(translator.typeName(type).value(), elements));
-			parseNestedModels(types.values());
-		}
-	}
-
-	private Map<String, Property> getProperties(ClassDoc classDoc) {
-		Map<String, Property> elements = new HashMap<String, Property>();
-		MethodDoc[] methodDocs = classDoc.methods();
-		if (methodDocs != null) {
-			for (MethodDoc method : methodDocs) {
-				String name = translator.methodName(method).value();
-				if (name != null && !elements.containsKey(name)) {
-					elements.put(name, getProperty(method.returnType(), getDescription(method)));
-				}
-			}
-		}
-
-		FieldDoc[] fieldDocs = classDoc.fields();
-		if (fieldDocs != null) {
-			for (FieldDoc field : fieldDocs) {
-				String name = translator.fieldName(field).value();
-				if (name != null && !elements.containsKey(name)) {
-					elements.put(name, getProperty(field.type(), field.commentText()));
-				}
-			}
-		}
-		return elements;
-	}
-
-	private String getDescription(MethodDoc method) {
-		String comment;
-		Tag[] returnTag = method.tags("@return");
-		if (returnTag.length > 0) {
-			comment = returnTag[0].text();
-		} else {
-			comment = method.commentText();
-		}
-		return comment;
-	}
-
-	private Map<String, Type> findReferencedTypes(ClassDoc classDoc) {
-		Map<String, Type> elements = new HashMap<String, Type>();
-
-		FieldDoc[] fieldDocs = classDoc.fields();
-		if (fieldDocs != null) {
-			for (FieldDoc field : fieldDocs) {
-				String name = translator.fieldName(field).value();
-				if (name != null && !elements.containsKey(name)) {
-					elements.put(name, field.type());
-				}
-			}
-		}
-
-		MethodDoc[] methodDocs = classDoc.methods();
-		if (methodDocs != null) {
-			for (MethodDoc method : methodDocs) {
-				String name = translator.methodName(method).value();
-				if (name != null && !elements.containsKey(name)) {
-					elements.put(name, method.returnType());
-				}
-			}
-		}
-		return elements;
-	}
-
-	private Property getProperty(Type type, String description) {
-		ClassDoc typeClassDoc = type.asClassDoc();
-
-		Type containerOf = parseParameterisedTypeOf(type);
-		String containerTypeOf = containerOf == null ? null : translator.typeName(containerOf).value();
-
-		String propertyName = translator.typeName(type).value();
-		Property property;
-		if (typeClassDoc != null && typeClassDoc.isEnum()) {
-			property = new Property(typeClassDoc.enumConstants(), description);
-		} else {
-			property = new Property(propertyName, description, containerTypeOf);
-		}
-		return property;
-	}
-
-	private Map<String, Property> findReferencedElements(Map<String, Type> types) {
-		Map<String, Property> elements = new HashMap<String, Property>();
-		for (Map.Entry<String, Type> entry : types.entrySet()) {
-			String typeName = entry.getKey();
-			Type type = entry.getValue();
-			ClassDoc typeClassDoc = type.asClassDoc();
-
-			Type containerOf = parseParameterisedTypeOf(type);
-			String containerTypeOf = containerOf == null ? null : translator.typeName(containerOf).value();
-
-			String propertyName = translator.typeName(type).value();
-			Property property;
-			if (typeClassDoc != null && typeClassDoc.isEnum()) {
-				property = new Property(typeClassDoc.enumConstants(), null);
-			} else {
-				property = new Property(propertyName, "HAHAHAHAHAHAHAH", containerTypeOf);
-			}
-			elements.put(typeName, property);
-		}
-		return elements;
-	}
-
-	private void parseNestedModels(Collection<Type> types) {
-		for (Type type : types) {
-			parseModel(type);
-			Type pt = parseParameterisedTypeOf(type);
-			if (pt != null) {
-				parseModel(pt);
-			}
-		}
-	}
-
-	private Type parseParameterisedTypeOf(Type type) {
-		Type result = null;
-		ParameterizedType pt = type.asParameterizedType();
-		if (pt != null) {
-			Type[] typeArgs = pt.typeArguments();
-			if (typeArgs != null && typeArgs.length > 0) {
-				result = typeArgs[0];
-			}
-		}
-		return result;
-	}
-
-	private boolean alreadyStoredType(final Type type) {
-		return filter(models, new Predicate<Model>() {
-			@Override
-			public boolean apply(Model model) {
-				return model.getId().equals(translator.typeName(type).value());
-			}
-		}).size() > 0;
-	}
-
 }
