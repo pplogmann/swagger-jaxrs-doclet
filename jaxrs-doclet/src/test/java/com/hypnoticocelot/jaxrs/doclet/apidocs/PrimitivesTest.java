@@ -32,7 +32,7 @@ public class PrimitivesTest {
 
     @Test
     public void testStart() throws IOException {
-        final RootDoc rootDoc = RootDocLoader.fromPath("src/test/resources", "fixtures.primitives");
+        final RootDoc rootDoc = RootDocLoader.fromPath("jaxrs-doclet/src/test/resources", "fixtures.primitives");
         new JaxRsAnnotationParser(options, rootDoc).run();
 
         List<String> primitives = Arrays.asList("boolean", "byte", "short", "int", "long", "float", "double", "string", "date");

@@ -4,6 +4,8 @@ import com.hypnoticocelot.jaxrs.doclet.parser.AnnotationHelper;
 import com.sun.javadoc.FieldDoc;
 import com.sun.javadoc.MethodDoc;
 import com.sun.javadoc.Type;
+import com.sun.tools.javadoc.ParameterizedTypeImpl;
+import sun.reflect.generics.reflectiveObjects.TypeVariableImpl;
 
 import static com.hypnoticocelot.jaxrs.doclet.translator.Translator.OptionalName.presentOrMissing;
 
@@ -11,6 +13,12 @@ public class NameBasedTranslator implements Translator {
 
     @Override
     public OptionalName typeName(Type type) {
+        if(type.asClassDoc() != null && type.asClassDoc().typeParameters().length > 0) {
+            String containerName = type.typeName();
+            containerName += "[" + ((ParameterizedTypeImpl) type).typeArguments()[0].typeName() + "]";
+            return presentOrMissing(containerName);
+        }
+
         return presentOrMissing(AnnotationHelper.typeOf(type.qualifiedTypeName()));
     }
 

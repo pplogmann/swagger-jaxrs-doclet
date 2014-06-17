@@ -32,7 +32,19 @@ public class ObjectTest {
 
     @Test
     public void testStart() throws IOException {
-        final RootDoc rootDoc = RootDocLoader.fromPath("src/test/resources", "fixtures.object");
+        final RootDoc rootDoc = RootDocLoader.fromPath("jaxrs-doclet/src/test/resources", "fixtures.object");
+        new JaxRsAnnotationParser(options, rootDoc).run();
+
+        List<String> primitives = Arrays.asList("object");
+        for (String primitive : primitives) {
+            final ApiDeclaration api = loadFixture("/fixtures/object/object.json", ApiDeclaration.class);
+            verify(recorderMock).record(any(File.class), eq(api));
+        }
+    }
+
+    @Test
+    public void testList() throws IOException {
+        final RootDoc rootDoc = RootDocLoader.fromPath("jaxrs-doclet/src/test/resources", "fixtures.object");
         new JaxRsAnnotationParser(options, rootDoc).run();
 
         List<String> primitives = Arrays.asList("object");

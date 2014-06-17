@@ -30,7 +30,7 @@ public class JaxbTest {
 
     @Test
     public void testStart() throws IOException {
-        final RootDoc rootDoc = RootDocLoader.fromPath("src/test/resources", "fixtures.jaxb");
+        final RootDoc rootDoc = RootDocLoader.fromPath("jaxrs-doclet/src/test/resources", "fixtures.jaxb");
         new JaxRsAnnotationParser(options, rootDoc).run();
 
         final ApiDeclaration api = loadFixture("/fixtures/jaxb/jaxb.json", ApiDeclaration.class);

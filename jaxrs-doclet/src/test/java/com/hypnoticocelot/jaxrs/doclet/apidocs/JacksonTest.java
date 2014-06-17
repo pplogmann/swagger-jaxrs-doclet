@@ -30,7 +30,7 @@ public class JacksonTest {
 
     @Test
     public void testStart() throws IOException {
-        final RootDoc rootDoc = RootDocLoader.fromPath("src/test/resources", "fixtures.jackson");
+        final RootDoc rootDoc = RootDocLoader.fromPath("jaxrs-doclet/src/test/resources", "fixtures.jackson");
         new JaxRsAnnotationParser(options, rootDoc).run();
 
         final ApiDeclaration api = loadFixture("/fixtures/jackson/jackson.json", ApiDeclaration.class);
