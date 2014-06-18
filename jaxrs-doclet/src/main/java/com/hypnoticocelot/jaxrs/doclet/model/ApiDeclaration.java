@@ -8,77 +8,90 @@ import java.util.Map;
 
 @JsonPropertyOrder({"apiVersion", "swaggerVersion", "basePath", "resourcePath", "apis", "models"})
 public class ApiDeclaration {
-    private String apiVersion;
-    private String swaggerVersion;
-    private String basePath;
-    private String resourcePath;
-    private Collection<Api> apis;
-    private Map<String, Model> models;
 
-    @SuppressWarnings("unused")
-    private ApiDeclaration() {
-    }
+	private String apiVersion;
+	private String swaggerVersion;
+	private String basePath;
+	private String resourcePath;
+	private String description;
+	private Collection<Api> apis;
+	private Map<String, Model> models;
 
-    public ApiDeclaration(String apiVersion, String basePath, String resourcePath, Collection<Api> apis, Map<String, Model> models) {
-        this.apiVersion = apiVersion;
-        this.swaggerVersion = "1.1";
-        this.basePath = basePath;
-        this.resourcePath = resourcePath;
-        this.apis = apis.isEmpty() ? null : apis;
-        this.models = models.isEmpty() ? null : models;
-    }
+	@SuppressWarnings("unused")
+	private ApiDeclaration() {
+	}
 
-    public String getApiVersion() {
-        return apiVersion;
-    }
+	public ApiDeclaration(String apiVersion, String basePath, String resourcePath, Collection<Api> apis, Map<String, Model> models, String description) {
+		this.apiVersion = apiVersion;
+		this.swaggerVersion = "1.1";
+		this.basePath = basePath;
+		this.resourcePath = resourcePath;
+		this.apis = apis.isEmpty() ? null : apis;
+		this.models = models.isEmpty() ? null : models;
+		this.description = description;
+	}
 
-    public String getSwaggerVersion() {
-        return swaggerVersion;
-    }
+	public String getApiVersion() {
+		return apiVersion;
+	}
 
-    public String getBasePath() {
-        return basePath;
-    }
+	public String getSwaggerVersion() {
+		return swaggerVersion;
+	}
 
-    public String getResourcePath() {
-        return resourcePath;
-    }
+	public String getBasePath() {
+		return basePath;
+	}
 
-    public Collection<Api> getApis() {
-        return apis;
-    }
+	public String getResourcePath() {
+		return resourcePath;
+	}
 
-    public Map<String, Model> getModels() {
-        return models;
-    }
+	public Collection<Api> getApis() {
+		return apis;
+	}
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        ApiDeclaration that = (ApiDeclaration) o;
-        return Objects.equal(apiVersion, that.apiVersion)
-                && Objects.equal(swaggerVersion, that.swaggerVersion)
-                && Objects.equal(basePath, that.basePath)
-                && Objects.equal(resourcePath, that.resourcePath)
-                && Objects.equal(apis, that.apis)
-                && Objects.equal(models, that.models);
-    }
+	public Map<String, Model> getModels() {
+		return models;
+	}
 
-    @Override
-    public int hashCode() {
-        return Objects.hashCode(apiVersion, swaggerVersion, basePath, resourcePath, apis, models);
-    }
+	public String getDescription() {
+		return description;
+	}
 
-    @Override
-    public String toString() {
-        return Objects.toStringHelper(this)
-                .add("apiVersion", apiVersion)
-                .add("swaggerVersion", swaggerVersion)
-                .add("basePath", basePath)
-                .add("resourcePath", resourcePath)
-                .add("apis", apis)
-                .add("models", models)
-                .toString();
-    }
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) {
+			return true;
+		}
+		if (o == null || getClass() != o.getClass()) {
+			return false;
+		}
+		ApiDeclaration that = (ApiDeclaration) o;
+		return Objects.equal(apiVersion, that.apiVersion)
+				&& Objects.equal(swaggerVersion, that.swaggerVersion)
+				&& Objects.equal(basePath, that.basePath)
+				&& Objects.equal(resourcePath, that.resourcePath)
+				&& Objects.equal(apis, that.apis)
+				&& Objects.equal(description, that.description)
+				&& Objects.equal(models, that.models);
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hashCode(apiVersion, swaggerVersion, basePath, resourcePath, apis, models, description);
+	}
+
+	@Override
+	public String toString() {
+		return Objects.toStringHelper(this)
+				.add("apiVersion", apiVersion)
+				.add("swaggerVersion", swaggerVersion)
+				.add("basePath", basePath)
+				.add("resourcePath", resourcePath)
+				.add("apis", apis)
+				.add("models", models)
+				.add("description", description)
+				.toString();
+	}
 }
