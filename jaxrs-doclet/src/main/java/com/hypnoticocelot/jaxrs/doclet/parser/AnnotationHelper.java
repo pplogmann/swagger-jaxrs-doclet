@@ -5,6 +5,7 @@ import com.hypnoticocelot.jaxrs.doclet.DocletOptions;
 import com.sun.javadoc.AnnotationDesc;
 import com.sun.javadoc.Parameter;
 import com.sun.javadoc.Type;
+import java.math.BigDecimal;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -58,6 +59,8 @@ public class AnnotationHelper {
             type = javaType.toLowerCase();
         } else if (javaType.equals("java.util.Date")) {
             type = "Date";
+		}else if(BigDecimal.class.getName().equals(javaType)) {
+			type = "double";
         } else {
             int i = javaType.lastIndexOf(".");
             if (i >= 0) {
