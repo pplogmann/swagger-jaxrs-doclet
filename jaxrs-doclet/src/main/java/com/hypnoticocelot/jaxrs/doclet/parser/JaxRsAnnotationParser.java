@@ -15,6 +15,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 import static com.google.common.collect.Maps.uniqueIndex;
+import com.hypnoticocelot.jaxrs.doclet.ObjectMapperReader;
 import com.hypnoticocelot.jaxrs.doclet.ServiceDoclet;
 import com.sun.javadoc.Tag;
 import java.io.FileInputStream;
@@ -82,9 +83,21 @@ public class JaxRsAnnotationParser {
 			}
 		}
 
+		//If multiple maven modules write their API doc to the same directory we test if there service.json already exists
+		//and then read the existing resources to join them with the current resources
+		File docFile = new File(outputDirectory, "service.json");
+		if (docFile.exists()) {
+			ObjectMapperReader reader = new ObjectMapperReader();
+			ResourceListing resourceListing = reader.read(docFile);
+			for (ResourceListingAPI resourceListingApi : resourceListing.getApis()) {
+				// Make sure we dont add an API twice (in case of common shared libs across modules)
+				if (!resources.contains(resourceListingApi)) {
+					resources.add(resourceListingApi);
+				}
+			}
+		}
 		//write out json for api
 		ResourceListing listing = new ResourceListing(options.getApiVersion(), options.getDocBasePath(), resources);
-		File docFile = new File(outputDirectory, "service.json");
 		recorder.record(docFile, listing);
 
 		// Copy swagger-ui into the output directory.
