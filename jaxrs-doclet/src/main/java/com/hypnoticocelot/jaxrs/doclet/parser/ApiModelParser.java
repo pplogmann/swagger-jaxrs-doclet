@@ -87,9 +87,7 @@ public class ApiModelParser {
 	private Property getProperty(Type type, String description) {
 		ClassDoc typeClassDoc = type.asClassDoc();
 
-		Type containerOf = parseParameterisedTypeOf(type);
-		String containerTypeOf = containerOf == null ? null : translator.typeName(containerOf).value();
-
+		String containerTypeOf = getParameterizedTypesName(type);
 		String propertyName = translator.typeName(type).value();
 		Property property;
 		if (typeClassDoc != null && typeClassDoc.isEnum()) {
@@ -100,26 +98,33 @@ public class ApiModelParser {
 		return property;
 	}
 
-	private void parseNestedModels(Collection<Type> types) {
-		for (Type type : types) {
-			parseModel(type);
-			Type pt = parseParameterisedTypeOf(type);
-			if (pt != null) {
-				parseModel(pt);
-			}
-		}
-	}
-
-	private Type parseParameterisedTypeOf(Type type) {
-		Type result = null;
+	private String getParameterizedTypesName(Type type) {
+		StringBuilder paramterizedTypes = new StringBuilder();
+		String parameterizedNames = null;
 		ParameterizedType pt = type.asParameterizedType();
 		if (pt != null) {
 			Type[] typeArgs = pt.typeArguments();
-			if (typeArgs != null && typeArgs.length > 0) {
-				result = typeArgs[0];
+			for (Type typeArg : typeArgs) {
+				paramterizedTypes.append(translator.typeName(typeArg).value());
+				paramterizedTypes.append(" ,");
+			}
+			parameterizedNames = paramterizedTypes.substring(0, paramterizedTypes.length() - 2);
+		}
+		return parameterizedNames;
+	}
+
+	private void parseNestedModels(Collection<Type> types) {
+		for (Type type : types) {
+			parseModel(type);
+
+			ParameterizedType pt = type.asParameterizedType();
+			if (pt != null) {
+				Type[] typeArgs = pt.typeArguments();
+				for (Type typeArg : typeArgs) {
+					parseModel(typeArg);
+				}
 			}
 		}
-		return result;
 	}
 
 	private boolean alreadyStoredType(final Type type) {
