@@ -61,7 +61,7 @@ public class ApiModelParser {
 			for (FieldDoc field : fieldDocs) {
 				String name = translator.fieldName(field).value();
 				if (name != null && !elements.containsKey(name)) {
-					elements.put(name, getProperty(field.type(), field.commentText()));
+					elements.put(name, getProperty(field.type(), parseDocs(field)));
 					types.put(name, field.type());
 				}
 			}
@@ -71,6 +71,17 @@ public class ApiModelParser {
 			models.add(new Model(translator.typeName(classDoc).value(), elements));
 			parseNestedModels(types.values());
 		}
+	}
+
+	/**
+	 * First Sentence of Javadoc method description
+	 */
+	private String parseDocs(Doc doc) {
+		StringBuilder sentences = new StringBuilder();
+		for (Tag tag : doc.firstSentenceTags()) {
+			sentences.append(tag.text());
+		}
+		return sentences.toString();
 	}
 
 	private String getDescription(MethodDoc method) {
